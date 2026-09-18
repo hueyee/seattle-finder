@@ -40,7 +40,12 @@ class HttpClient:
         use_cache: bool = True,
     ) -> Any:
         body = json.dumps(payload, sort_keys=True).encode("utf-8")
-        cache_key = f"POST {url} {body.decode('utf-8')}"
+        cache_headers = {
+            key: value
+            for key, value in (headers or {}).items()
+            if key.lower() != "x-goog-api-key"
+        }
+        cache_key = f"POST:v2 {url} {json.dumps(cache_headers, sort_keys=True)} {body.decode('utf-8')}"
 
         if use_cache:
             cached = self.cache.get(cache_key)

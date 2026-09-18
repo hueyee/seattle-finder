@@ -26,6 +26,10 @@ function formatMoney(value) {
   return `$${value.toFixed(2)}`;
 }
 
+function hasValue(value) {
+  return value !== null && value !== undefined;
+}
+
 function targetAgeRange() {
   const min = Number($("#target-age-min").value);
   const max = Number($("#target-age-max").value);
@@ -171,7 +175,7 @@ function renderTable(results) {
           <td class="${deltaClass}">${formatDelta(result.home_delta)}</td>
           <td>
             <div>${formatMinutes(result.average_commute_minutes)}</div>
-            <span class="source">${formatMoney(result.average_daily_cost)}/day</span>
+            <span class="source">${hasValue(result.average_daily_cost) ? `${formatMoney(result.average_daily_cost)}/day` : "--"}</span>
           </td>
           <td><span class="source">${result.source}</span></td>
         </tr>
@@ -188,11 +192,13 @@ function renderCommuteList(result, context) {
       ${result.commutes
         .map((commute) => {
           const summary =
-            commute.morning_duration_minutes !== null && commute.evening_duration_minutes !== null
+            hasValue(commute.morning_duration_minutes) && hasValue(commute.evening_duration_minutes)
               ? `AM ${formatMinutes(commute.morning_duration_minutes)} / PM ${formatMinutes(commute.evening_duration_minutes)}`
-              : commute.status;
+              : hasValue(commute.duration_minutes)
+                ? `${formatMinutes(commute.duration_minutes)} avg`
+                : commute.status;
           const cost =
-            commute.daily_total_cost !== null
+            hasValue(commute.daily_total_cost)
               ? `${formatMoney(commute.daily_total_cost)}/day`
               : "";
           const routeLink = commute.route_url
