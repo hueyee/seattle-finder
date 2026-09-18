@@ -94,7 +94,8 @@ function addMarker(result, rank) {
     Score: ${(result.score * 100).toFixed(0)}<br>
     Young-adult share: ${formatPercent(result.target_share)}<br>
     Avg commute: ${formatMinutes(result.average_commute_minutes)}
-    ${firstRoute ? `<br><a href="${firstRoute.route_url}" target="_blank" rel="noreferrer">Open route</a>` : ""}
+    ${firstRoute ? `<br><a href="${firstRoute.route_url}" target="_blank" rel="noreferrer">Open first route</a>` : ""}
+    ${renderCommuteList(result, "popup")}
   `);
   marker.addTo(markerLayer);
   return marker;
@@ -129,13 +130,12 @@ function renderTable(results) {
   body.innerHTML = results
     .map((result, index) => {
       const deltaClass = result.home_delta >= 0 ? "positive" : "negative";
-      const route = result.commutes.find((commute) => commute.route_url);
       return `
         <tr>
           <td>${index + 1}</td>
           <td>
             <div class="place-name">${result.name}</div>
-            ${route ? `<a class="route-link" href="${route.route_url}" target="_blank" rel="noreferrer">Route</a>` : ""}
+            ${renderCommuteList(result, "table")}
           </td>
           <td><span class="score-pill">${(result.score * 100).toFixed(0)}</span></td>
           <td>${formatPercent(result.target_share)}</td>
@@ -146,6 +146,33 @@ function renderTable(results) {
       `;
     })
     .join("");
+}
+
+function renderCommuteList(result, context) {
+  if (!result.commutes?.length) return "";
+  const className = context === "popup" ? "commute-list commute-list-popup" : "commute-list";
+  return `
+    <div class="${className}">
+      ${result.commutes
+        .map((commute) => {
+          const summary =
+            commute.duration_minutes !== null && commute.distance_miles !== null
+              ? `${formatMinutes(commute.duration_minutes)} / ${commute.distance_miles.toFixed(1)} mi`
+              : commute.status;
+          const routeLink = commute.route_url
+            ? `<a class="route-link" href="${commute.route_url}" target="_blank" rel="noreferrer">Route</a>`
+            : "";
+          return `
+            <div class="commute-item">
+              <span class="commute-office">${commute.office_name}</span>
+              <span class="commute-summary">${summary}</span>
+              ${routeLink}
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
 }
 
 function renderMetrics(payload) {

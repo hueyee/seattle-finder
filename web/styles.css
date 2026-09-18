@@ -330,6 +330,35 @@ th {
   text-decoration: underline;
 }
 
+.commute-list {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+  min-width: 220px;
+}
+
+.commute-list-popup {
+  margin-top: 10px;
+}
+
+.commute-item {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto auto;
+  gap: 8px;
+  align-items: baseline;
+  color: #33403d;
+  font-size: 12px;
+}
+
+.commute-office {
+  font-weight: 800;
+}
+
+.commute-summary {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
