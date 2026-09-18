@@ -69,6 +69,7 @@ class ScoringTests(unittest.TestCase):
         self.assertEqual(len(result["results"][0]["commutes"]), 3)
         self.assertEqual(result["results"][0]["commutes"][1]["office_name"], "Office B")
         self.assertEqual(result["results"][0]["average_commute_minutes"], 20)
+        self.assertEqual(result["results"][0]["average_daily_cost"], 2)
 
     def test_slug_normalizes_place_names(self):
         self.assertEqual(slug("Union Hill-Novelty Hill, WA"), "union-hill-novelty-hill-wa")
@@ -81,7 +82,7 @@ class ScoringTests(unittest.TestCase):
 class FakeMapsClient:
     enabled = True
 
-    def commute(self, origin, destination, office_name):
+    def commute(self, origin, destination, office_name, config=None):
         durations = {"Office A": 10, "Office B": 20, "Office C": 30}
         return (
             Commute(
@@ -91,6 +92,9 @@ class FakeMapsClient:
                 distance_miles=durations[office_name] / 2,
                 status="OK",
                 route_url=f"https://example.test/{office_name}",
+                morning_duration_minutes=durations[office_name] - 1,
+                evening_duration_minutes=durations[office_name] + 1,
+                daily_total_cost=durations[office_name] / 10,
             ),
             {"lat": 47.6, "lng": -122.2},
         )

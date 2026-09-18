@@ -20,6 +20,11 @@ function formatMinutes(value) {
   return `${value.toFixed(0)} min`;
 }
 
+function formatMoney(value) {
+  if (value === null || value === undefined) return "--";
+  return `$${value.toFixed(2)}`;
+}
+
 function targetAgeRange() {
   const min = Number($("#target-age-min").value);
   const max = Number($("#target-age-max").value);
@@ -55,6 +60,17 @@ function payloadFromForm() {
     weights: {
       demographics: Number($("#demographic-weight").value),
       commute: Number($("#commute-weight").value)
+    },
+    commute_schedule: {
+      timezone: "America/Los_Angeles",
+      morning_arrival_time: $("#morning-arrival-time").value || "09:00",
+      evening_departure_time: $("#evening-departure-time").value || "17:00"
+    },
+    vehicle: {
+      miles_per_gallon: Number($("#miles-per-gallon").value),
+      fuel_price_per_gallon: Number($("#fuel-price-per-gallon").value),
+      toll_passes: ["US_WA_GOOD_TO_GO"],
+      emission_type: "GASOLINE"
     },
     office_locations: parseOffices()
   };
@@ -140,7 +156,10 @@ function renderTable(results) {
           <td><span class="score-pill">${(result.score * 100).toFixed(0)}</span></td>
           <td>${formatPercent(result.target_share)}</td>
           <td class="${deltaClass}">${formatDelta(result.home_delta)}</td>
-          <td>${formatMinutes(result.average_commute_minutes)}</td>
+          <td>
+            <div>${formatMinutes(result.average_commute_minutes)}</div>
+            <span class="source">${formatMoney(result.average_daily_cost)}/day</span>
+          </td>
           <td><span class="source">${result.source}</span></td>
         </tr>
       `;
@@ -156,9 +175,13 @@ function renderCommuteList(result, context) {
       ${result.commutes
         .map((commute) => {
           const summary =
-            commute.duration_minutes !== null && commute.distance_miles !== null
-              ? `${formatMinutes(commute.duration_minutes)} / ${commute.distance_miles.toFixed(1)} mi`
+            commute.morning_duration_minutes !== null && commute.evening_duration_minutes !== null
+              ? `AM ${formatMinutes(commute.morning_duration_minutes)} / PM ${formatMinutes(commute.evening_duration_minutes)}`
               : commute.status;
+          const cost =
+            commute.daily_total_cost !== null
+              ? `${formatMoney(commute.daily_total_cost)}/day`
+              : "";
           const routeLink = commute.route_url
             ? `<a class="route-link" href="${commute.route_url}" target="_blank" rel="noreferrer">Route</a>`
             : "";
@@ -166,6 +189,7 @@ function renderCommuteList(result, context) {
             <div class="commute-item">
               <span class="commute-office">${commute.office_name}</span>
               <span class="commute-summary">${summary}</span>
+              <span class="commute-cost">${cost}</span>
               ${routeLink}
             </div>
           `;
@@ -229,6 +253,10 @@ async function loadDefaults() {
   $("#target-age-min").value = config.target_age_min ?? 24;
   $("#target-age-max").value = config.target_age_max ?? 29;
   $("#directions-limit").value = config.directions_limit;
+  $("#morning-arrival-time").value = config.commute_schedule?.morning_arrival_time ?? "09:00";
+  $("#evening-departure-time").value = config.commute_schedule?.evening_departure_time ?? "17:00";
+  $("#miles-per-gallon").value = config.vehicle?.miles_per_gallon ?? 15;
+  $("#fuel-price-per-gallon").value = config.vehicle?.fuel_price_per_gallon ?? 5.0;
   $("#demographic-weight").value = config.weights.demographics;
   $("#commute-weight").value = config.weights.commute;
   $("#include-neighborhoods").checked = config.include_seattle_neighborhoods;

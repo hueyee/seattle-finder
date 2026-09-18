@@ -343,7 +343,7 @@ th {
 
 .commute-item {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) auto auto;
+  grid-template-columns: minmax(120px, 1fr) auto auto auto;
   gap: 8px;
   align-items: baseline;
   color: #33403d;
@@ -356,6 +356,12 @@ th {
 
 .commute-summary {
   color: var(--muted);
+  white-space: nowrap;
+}
+
+.commute-cost {
+  color: var(--accent-strong);
+  font-weight: 800;
   white-space: nowrap;
 }
 

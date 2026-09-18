@@ -56,6 +56,17 @@
   "min_population": 2500,
   "min_neighborhood_population": 800,
   "directions_limit": 25,
+  "commute_schedule": {
+    "timezone": "America/Los_Angeles",
+    "morning_arrival_time": "09:00",
+    "evening_departure_time": "17:00"
+  },
+  "vehicle": {
+    "miles_per_gallon": 15,
+    "fuel_price_per_gallon": 5.0,
+    "toll_passes": ["US_WA_GOOD_TO_GO"],
+    "emission_type": "GASOLINE"
+  },
   "weights": {
     "demographics": 0.65,
     "commute": 0.35

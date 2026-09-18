@@ -7,6 +7,8 @@ A local v1 web app for comparing Greater Seattle places by young-adult demograph
 - Pulls ACS 2024 `B01001: Sex by Age` place data from the Census API.
 - Pulls Seattle neighborhood age data from Seattle City GIS ArcGIS.
 - Uses Google Routes API for drive commute time and distance when `GOOGLE_MAPS_API_KEY` is set.
+- Estimates commute timing for arrival by 9:00 AM and departure at 5:00 PM by default.
+- Estimates daily driving cost from fuel plus Routes API toll estimates, including SR-520 when the route uses it.
 - Scores places by target-age share and commute time, then renders rankings and a map.
 
 ## Run
@@ -35,6 +37,8 @@ Useful knobs:
 - `office_locations`: add one or more office names and exact street addresses.
 - `weights`: tune demographic versus commute importance.
 - `directions_limit`: controls how many high-demographic candidates get Google Routes calls.
+- `commute_schedule`: defaults to arrival by `09:00` and departure at `17:00`.
+- `vehicle`: defaults to `15` MPG, `$5.00` per gallon, gasoline, and `US_WA_GOOD_TO_GO` toll pass pricing.
 - `candidate_places`: the Census place allowlist for the Greater Seattle search area.
 
 ## Data Sources

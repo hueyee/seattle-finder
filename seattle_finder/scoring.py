@@ -50,7 +50,7 @@ def analyze(candidates: list[Candidate], maps: GoogleMapsClient, config: dict[st
         commutes: list[Commute] = []
         first_location: dict[str, float] | None = None
         for office in offices:
-            commute, start_location = maps.commute(candidate.search_text, office["address"], office["name"])
+            commute, start_location = maps.commute(candidate.search_text, office["address"], office["name"], config)
             commutes.append(commute)
             if first_location is None and start_location:
                 first_location = start_location
@@ -66,6 +66,11 @@ def analyze(candidates: list[Candidate], maps: GoogleMapsClient, config: dict[st
                     [commute.duration_minutes for commute in commutes if commute.duration_minutes is not None]
                 )
                 if any(commute.duration_minutes is not None for commute in commutes)
+                else None,
+                "average_daily_cost": mean(
+                    [commute.daily_total_cost for commute in commutes if commute.daily_total_cost is not None]
+                )
+                if any(commute.daily_total_cost is not None for commute in commutes)
                 else None,
             }
         )
@@ -98,6 +103,7 @@ def analyze(candidates: list[Candidate], maps: GoogleMapsClient, config: dict[st
                 "target_share": candidate.target_share,
                 "home_delta": home_delta,
                 "average_commute_minutes": row["average_commute_minutes"],
+                "average_daily_cost": row["average_daily_cost"],
                 "score": combined,
                 "demographic_score": demographic_score,
                 "commute_score": commute_score if maps.enabled else None,
