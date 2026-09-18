@@ -1,8 +1,20 @@
 let map;
 let markerLayer;
 let isAnalyzing = false;
+let currentResults = [];
+let currentMarkers = [];
+let selectedIndex = null;
 
 const $ = (selector) => document.querySelector(selector);
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
 
 function formatPercent(value) {
   if (value === null || value === undefined) return "--";
@@ -39,19 +51,60 @@ function targetAgeRange() {
   };
 }
 
+function syncWeights(changedId) {
+  const demographic = $("#demographic-weight");
+  const commute = $("#commute-weight");
+
+  if (changedId === "commute-weight") {
+    demographic.value = 100 - Number(commute.value);
+  } else {
+    commute.value = 100 - Number(demographic.value);
+  }
+
+  $("#demographic-weight-label").textContent = `${demographic.value}%`;
+  $("#commute-weight-label").textContent = `${commute.value}%`;
+  $("#weight-total").textContent = `${Number(demographic.value) + Number(commute.value)}%`;
+}
+
+function addOfficeRow(office = {}) {
+  const row = document.createElement("div");
+  row.className = "office-row";
+  row.innerHTML = `
+    <label class="field">
+      Name
+      <input class="office-name" type="text" value="${escapeHtml(office.name ?? "")}" />
+    </label>
+    <label class="field">
+      Address
+      <input class="office-address" type="text" value="${escapeHtml(office.address ?? "")}" />
+    </label>
+    <button class="icon-button remove-office-button" type="button" title="Remove office" aria-label="Remove office">x</button>
+  `;
+  $("#office-rows").append(row);
+}
+
 function parseOffices() {
-  return $("#office-locations")
-    .value.split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [name, address] = line.split("|").map((part) => part.trim());
-      const resolvedAddress = address || name;
-      if (!/\d/.test(resolvedAddress)) {
-        throw new Error("Office locations need exact street addresses, one per line.");
-      }
-      return { name: name || resolvedAddress, address: resolvedAddress };
-    });
+  const offices = [...document.querySelectorAll(".office-row")]
+    .map((row) => {
+      const name = row.querySelector(".office-name").value.trim();
+      const address = row.querySelector(".office-address").value.trim();
+      return {
+        name: name || address,
+        address
+      };
+    })
+    .filter((office) => office.name || office.address);
+
+  if (!offices.length) {
+    throw new Error("Add at least one office before analyzing commute fit.");
+  }
+
+  const missingAddress = offices.find((office) => !office.address);
+  if (missingAddress) {
+    throw new Error(`Add an address for ${missingAddress.name}.`);
+  }
+
+  return offices;
 }
 
 function payloadFromForm() {
@@ -63,8 +116,8 @@ function payloadFromForm() {
     include_seattle_neighborhoods: $("#include-neighborhoods").checked,
     directions_limit: Number($("#directions-limit").value),
     weights: {
-      demographics: Number($("#demographic-weight").value),
-      commute: Number($("#commute-weight").value)
+      demographics: Number($("#demographic-weight").value) / 100,
+      commute: Number($("#commute-weight").value) / 100
     },
     commute_schedule: {
       timezone: "America/Los_Angeles",
@@ -111,25 +164,25 @@ function markerColor(score) {
   return "#9a3412";
 }
 
-function addMarker(result, rank) {
+function addMarker(result, index) {
   if (!result.location) return null;
   const color = markerColor(result.score);
   const marker = L.circleMarker([result.location.lat, result.location.lng], {
-    radius: Math.max(7, 16 - rank * 0.25),
+    radius: Math.max(7, 16 - (index + 1) * 0.25),
     color,
     fillColor: color,
     fillOpacity: 0.82,
     weight: 2
   });
-  const firstRoute = result.commutes.find((commute) => commute.route_url);
+
   marker.bindPopup(`
-    <strong>${rank}. ${result.name}</strong><br>
+    <strong>${index + 1}. ${escapeHtml(result.name)}</strong><br>
     Score: ${(result.score * 100).toFixed(0)}<br>
     Young-adult share: ${formatPercent(result.target_share)}<br>
     Avg commute: ${formatMinutes(result.average_commute_minutes)}
-    ${firstRoute ? `<br><a href="${firstRoute.route_url}" target="_blank" rel="noreferrer">Open first route</a>` : ""}
     ${renderCommuteList(result, "popup")}
   `);
+  marker.on("click", () => selectResult(index, { panToMarker: false }));
   marker.addTo(markerLayer);
   return marker;
 }
@@ -142,44 +195,75 @@ function renderMap(results) {
   }
   initMap();
   markerLayer.clearLayers();
+  currentMarkers = [];
 
-  const markers = located.slice(0, 40).map((result, index) => addMarker(result, index + 1)).filter(Boolean);
+  results.slice(0, 40).forEach((result, index) => {
+    const marker = addMarker(result, index);
+    currentMarkers[index] = marker;
+  });
+
+  const markers = currentMarkers.filter(Boolean);
   if (markers.length > 0) {
     const group = L.featureGroup(markers);
     map.fitBounds(group.getBounds().pad(0.18));
-  } else {
+  } else if (!located.length) {
     map.setView([47.61, -122.16], 10);
   }
   window.setTimeout(() => map.invalidateSize(), 0);
 }
 
-function renderTable(results) {
+function resultCard(result, index) {
+  const deltaClass = result.home_delta >= 0 ? "positive" : "negative";
+  const score = Math.round(result.score * 100);
+  return `
+    <button class="result-card" type="button" data-index="${index}" aria-label="Open details for ${escapeHtml(result.name)}">
+      <div class="card-topline">
+        <div>
+          <div class="place-name">${escapeHtml(result.name)}</div>
+          <div class="source">${escapeHtml(result.source)}</div>
+        </div>
+        <span class="rank-badge">#${index + 1}</span>
+      </div>
+      <div class="quality-bar" aria-hidden="true"><span style="--bar-value: ${score}%"></span></div>
+      <div class="mini-metrics">
+        <div class="mini-metric">
+          <span>Score</span>
+          <strong><span class="score-pill">${score}</span></strong>
+        </div>
+        <div class="mini-metric">
+          <span>Target share</span>
+          <strong>${formatPercent(result.target_share)}</strong>
+        </div>
+        <div class="mini-metric">
+          <span>Vs. home</span>
+          <strong class="${deltaClass}">${formatDelta(result.home_delta)}</strong>
+        </div>
+        <div class="mini-metric">
+          <span>Avg commute</span>
+          <strong>${formatMinutes(result.average_commute_minutes)}</strong>
+        </div>
+        <div class="mini-metric">
+          <span>Daily cost</span>
+          <strong>${hasValue(result.average_daily_cost) ? formatMoney(result.average_daily_cost) : "--"}</strong>
+        </div>
+      </div>
+    </button>
+  `;
+}
+
+function renderResults(results) {
+  currentResults = results;
+  selectedIndex = null;
   const body = $("#results-body");
+  $("#detail-panel").hidden = true;
+  $("#drawer-count").textContent = `${results.length} shown`;
+
   if (!results.length) {
-    body.innerHTML = '<tr><td colspan="8">No results returned.</td></tr>';
+    body.innerHTML = '<p class="empty-state">No results returned.</p>';
     return;
   }
 
-  body.innerHTML = results
-    .map((result, index) => {
-      const deltaClass = result.home_delta >= 0 ? "positive" : "negative";
-      return `
-        <tr>
-          <td>${index + 1}</td>
-          <td>
-            <div class="place-name">${result.name}</div>
-            ${renderCommuteList(result, "table")}
-          </td>
-          <td><span class="score-pill">${(result.score * 100).toFixed(0)}</span></td>
-          <td>${formatPercent(result.target_share)}</td>
-          <td class="${deltaClass}">${formatDelta(result.home_delta)}</td>
-          <td>${formatMinutes(result.average_commute_minutes)}</td>
-          <td><span class="cost-pill">${hasValue(result.average_daily_cost) ? `${formatMoney(result.average_daily_cost)}/day` : "--"}</span></td>
-          <td><span class="source">${result.source}</span></td>
-        </tr>
-      `;
-    })
-    .join("");
+  body.innerHTML = results.map(resultCard).join("");
 }
 
 function renderCommuteList(result, context) {
@@ -194,19 +278,16 @@ function renderCommuteList(result, context) {
               ? `AM ${formatMinutes(commute.morning_duration_minutes)} / PM ${formatMinutes(commute.evening_duration_minutes)}`
               : hasValue(commute.duration_minutes)
                 ? `${formatMinutes(commute.duration_minutes)} avg`
-                : commute.status;
-          const cost =
-            hasValue(commute.daily_total_cost)
-              ? `${formatMoney(commute.daily_total_cost)}/day`
-              : "";
+                : escapeHtml(commute.status);
+          const cost = hasValue(commute.daily_total_cost) ? `${formatMoney(commute.daily_total_cost)}/day` : "";
           const routeLink = commute.route_url
-            ? `<a class="route-link" href="${commute.route_url}" target="_blank" rel="noreferrer">Route</a>`
+            ? `<a class="route-link" href="${escapeHtml(commute.route_url)}" target="_blank" rel="noreferrer">Route</a>`
             : "";
           return `
             <div class="commute-item">
-              <span class="commute-office">${commute.office_name}</span>
-              <span class="commute-summary">${summary}</span>
+              <span class="commute-office">${escapeHtml(commute.office_name)}</span>
               <span class="commute-cost">${cost}</span>
+              <span class="commute-summary">${summary}</span>
               ${routeLink}
             </div>
           `;
@@ -214,6 +295,57 @@ function renderCommuteList(result, context) {
         .join("")}
     </div>
   `;
+}
+
+function renderDetail(result, index) {
+  const panel = $("#detail-panel");
+  const deltaClass = result.home_delta >= 0 ? "positive" : "negative";
+  panel.innerHTML = `
+    <div class="detail-topline">
+      <div>
+        <h2>${escapeHtml(result.name)}</h2>
+        <div class="source">Rank #${index + 1} / ${escapeHtml(result.source)}</div>
+      </div>
+      <button class="close-button" type="button" aria-label="Close details">x</button>
+    </div>
+    <div class="detail-grid">
+      <div class="detail-stat">
+        <span>Score</span>
+        <strong>${Math.round(result.score * 100)}</strong>
+      </div>
+      <div class="detail-stat">
+        <span>Target share</span>
+        <strong>${formatPercent(result.target_share)}</strong>
+      </div>
+      <div class="detail-stat">
+        <span>Vs. home</span>
+        <strong class="${deltaClass}">${formatDelta(result.home_delta)}</strong>
+      </div>
+      <div class="detail-stat">
+        <span>Avg daily cost</span>
+        <strong>${hasValue(result.average_daily_cost) ? formatMoney(result.average_daily_cost) : "--"}</strong>
+      </div>
+    </div>
+    <h2>Office commutes</h2>
+    ${renderCommuteList(result, "detail")}
+  `;
+  panel.hidden = false;
+}
+
+function selectResult(index, options = {}) {
+  const result = currentResults[index];
+  if (!result) return;
+  selectedIndex = index;
+  document.querySelectorAll(".result-card").forEach((card) => {
+    card.classList.toggle("is-selected", Number(card.dataset.index) === index);
+  });
+  renderDetail(result, index);
+
+  const marker = currentMarkers[index];
+  if (marker && options.panToMarker !== false) {
+    map.panTo(marker.getLatLng());
+    marker.openPopup();
+  }
 }
 
 function renderMetrics(payload) {
@@ -242,6 +374,13 @@ function renderStatus(payload) {
       : `Ranked by demographics. Set up Google Routes for commute times and mapped candidate locations.${sourceWarning}`;
 }
 
+function renderError(message) {
+  $("#status").textContent = message;
+  $("#results-body").innerHTML = `<p class="empty-state">${escapeHtml(message)}</p>`;
+  $("#drawer-count").textContent = "0 shown";
+  $("#detail-panel").hidden = true;
+}
+
 async function analyze(event) {
   event?.preventDefault();
   if (isAnalyzing) return;
@@ -250,7 +389,9 @@ async function analyze(event) {
   const routeRequests = estimatedRouteRequests(payload);
   setAnalyzingState(true);
   $("#status").textContent = `Loading demographics and ${routeRequests} Google Routes estimates...`;
-  $("#results-body").innerHTML = '<tr><td colspan="8">Analyzing commute candidates...</td></tr>';
+  $("#results-body").innerHTML = '<p class="empty-state">Analyzing commute candidates...</p>';
+  $("#drawer-count").textContent = "Working";
+  $("#detail-panel").hidden = true;
 
   try {
     const response = await fetch("/api/analyze", {
@@ -267,9 +408,12 @@ async function analyze(event) {
     }
 
     renderMetrics(result);
-    renderTable(result.results);
+    renderResults(result.results);
     renderMap(result.results);
     renderStatus(result);
+    if (result.results.length && window.matchMedia("(min-width: 901px)").matches) {
+      selectResult(0, { panToMarker: false });
+    }
   } finally {
     setAnalyzingState(false);
   }
@@ -286,21 +430,37 @@ async function loadDefaults() {
   $("#evening-departure-time").value = config.commute_schedule?.evening_departure_time ?? "17:00";
   $("#miles-per-gallon").value = config.vehicle?.miles_per_gallon ?? 15;
   $("#fuel-price-per-gallon").value = config.vehicle?.fuel_price_per_gallon ?? 5.0;
-  $("#demographic-weight").value = config.weights.demographics;
-  $("#commute-weight").value = config.weights.commute;
+  $("#demographic-weight").value = Math.round((config.weights.demographics ?? 0.65) * 100);
+  syncWeights("demographic-weight");
   $("#include-neighborhoods").checked = config.include_seattle_neighborhoods;
-  $("#office-locations").value = config.office_locations
-    .map((office) => `${office.name}|${office.address}`)
-    .join("\n");
+  $("#office-rows").innerHTML = "";
+  config.office_locations.forEach(addOfficeRow);
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
   $("#config-form").addEventListener("submit", (event) => {
-    analyze(event).catch((error) => {
-      $("#status").textContent = error.message;
-      $("#results-body").innerHTML = `<tr><td colspan="8">${error.message}</td></tr>`;
-    });
+    analyze(event).catch((error) => renderError(error.message));
   });
+  $("#add-office-button").addEventListener("click", () => addOfficeRow());
+  $("#office-rows").addEventListener("click", (event) => {
+    if (!event.target.matches(".remove-office-button")) return;
+    event.target.closest(".office-row").remove();
+    if (!document.querySelector(".office-row")) addOfficeRow();
+  });
+  $("#results-body").addEventListener("click", (event) => {
+    const card = event.target.closest(".result-card");
+    if (!card) return;
+    selectResult(Number(card.dataset.index));
+  });
+  $("#detail-panel").addEventListener("click", (event) => {
+    if (!event.target.matches(".close-button")) return;
+    $("#detail-panel").hidden = true;
+    selectedIndex = null;
+    document.querySelectorAll(".result-card").forEach((card) => card.classList.remove("is-selected"));
+  });
+  $("#demographic-weight").addEventListener("input", () => syncWeights("demographic-weight"));
+  $("#commute-weight").addEventListener("input", () => syncWeights("commute-weight"));
+
   await loadDefaults();
   $("#status").textContent = "Ready. Adjust settings and click Analyze.";
   renderMap([]);

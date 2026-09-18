@@ -21,80 +21,92 @@
         </div>
 
         <form id="config-form" class="control-stack">
-          <label>
+          <label class="field">
             Home base
             <input id="home" name="home" type="text" value="Sammamish, WA" />
           </label>
 
-          <fieldset>
+          <fieldset class="compact-fieldset">
             <legend>Target age range</legend>
-            <label>
+            <label class="field">
               Min age
               <input id="target-age-min" type="number" min="18" max="39" step="1" value="24" />
             </label>
-            <label>
+            <label class="field">
               Max age
               <input id="target-age-max" type="number" min="18" max="39" step="1" value="29" />
             </label>
           </fieldset>
 
-          <div class="grid-two">
-            <label>
-              Demographic weight
-              <input id="demographic-weight" type="number" min="0" max="1" step="0.05" value="0.65" />
+          <section class="priority-panel" aria-labelledby="priority-heading">
+            <div class="section-title">
+              <h2 id="priority-heading">Fit priorities</h2>
+              <span id="weight-total">100%</span>
+            </div>
+            <label class="range-field">
+              <span>Demographics</span>
+              <output id="demographic-weight-label" for="demographic-weight">65%</output>
+              <input id="demographic-weight" type="range" min="0" max="100" step="5" value="65" />
             </label>
-            <label>
-              Commute weight
-              <input id="commute-weight" type="number" min="0" max="1" step="0.05" value="0.35" />
+            <label class="range-field">
+              <span>Commute</span>
+              <output id="commute-weight-label" for="commute-weight">35%</output>
+              <input id="commute-weight" type="range" min="0" max="100" step="5" value="35" />
             </label>
-          </div>
+          </section>
 
-          <div class="grid-two">
-            <label>
+          <div class="primary-options">
+            <label class="field">
               Commute candidates
               <input id="directions-limit" type="number" min="1" max="25" step="1" value="5" />
             </label>
             <label class="toggle-row">
               <input id="include-neighborhoods" type="checkbox" checked />
-              Seattle neighborhoods
+              <span>Seattle neighborhoods</span>
             </label>
           </div>
 
-          <div class="grid-two">
-            <label>
-              Arrive by
-              <input id="morning-arrival-time" type="time" value="09:00" />
-            </label>
-            <label>
-              Leave at
-              <input id="evening-departure-time" type="time" value="17:00" />
-            </label>
-          </div>
+          <details class="advanced-panel">
+            <summary>Advanced commute settings</summary>
+            <div class="advanced-content">
+              <div class="grid-two">
+                <label class="field">
+                  Arrive by
+                  <input id="morning-arrival-time" type="time" value="09:00" />
+                </label>
+                <label class="field">
+                  Leave at
+                  <input id="evening-departure-time" type="time" value="17:00" />
+                </label>
+              </div>
 
-          <div class="grid-two">
-            <label>
-              MPG
-              <input id="miles-per-gallon" type="number" min="1" max="120" step="0.1" value="15" />
-            </label>
-            <label>
-              Fuel $/gal
-              <input id="fuel-price-per-gallon" type="number" min="0" max="20" step="0.01" value="5.00" />
-            </label>
-          </div>
+              <div class="grid-two">
+                <label class="field">
+                  MPG
+                  <input id="miles-per-gallon" type="number" min="1" max="120" step="0.1" value="15" />
+                </label>
+                <label class="field">
+                  Fuel $/gal
+                  <input id="fuel-price-per-gallon" type="number" min="0" max="20" step="0.01" value="5.00" />
+                </label>
+              </div>
 
-          <label>
-            Office exact addresses
-            <textarea id="office-locations" rows="4">Bellevue Office|929 108th Ave NE Unit 1800, Bellevue, WA 98004, USA
-Renton Office|828 N 10th Pl, Renton, WA 98057, United States
-Issaquah Office|371 NE Gilman Blvd #160, Issaquah, WA 98027, United States</textarea>
-          </label>
+              <div class="office-editor">
+                <div class="section-title">
+                  <h2>Offices</h2>
+                  <button id="add-office-button" class="ghost-button" type="button">Add</button>
+                </div>
+                <div id="office-rows" class="office-rows" aria-live="polite"></div>
+              </div>
+            </div>
+          </details>
 
           <button id="analyze-button" class="primary-button" type="submit">Analyze</button>
         </form>
       </aside>
 
       <section class="workspace">
-        <div class="toolbar">
+        <div class="toolbar map-overlay">
           <div>
             <h2>Ranked matches</h2>
             <p id="status">Ready.</p>
@@ -108,25 +120,17 @@ Issaquah Office|371 NE Gilman Blvd #160, Issaquah, WA 98027, United States</text
 
         <div id="map" aria-label="Map of ranked candidate places"></div>
 
-        <div class="results-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Place</th>
-                <th>Score</th>
-                <th>Target share</th>
-                <th>Vs. home</th>
-                <th>Avg commute</th>
-                <th>Daily cost</th>
-                <th>Source</th>
-              </tr>
-            </thead>
-            <tbody id="results-body">
-              <tr><td colspan="8">Run an analysis to load results.</td></tr>
-            </tbody>
-          </table>
+        <div class="results-drawer" aria-label="Ranked places">
+          <div class="drawer-heading">
+            <h2>Ranked places</h2>
+            <span id="drawer-count">0 shown</span>
+          </div>
+          <div id="results-body" class="result-list">
+            <p class="empty-state">Run an analysis to load results.</p>
+          </div>
         </div>
+
+        <aside id="detail-panel" class="detail-panel" aria-live="polite" hidden></aside>
       </section>
     </main>
 
