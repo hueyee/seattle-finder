@@ -73,8 +73,16 @@
   },
   "office_locations": [
     {
-      "name": "Bellevue City Hall",
-      "address": "450 110th Ave NE, Bellevue, WA 98004"
+      "name": "Bellevue Office",
+      "address": "929 108th Ave NE Unit 1800, Bellevue, WA 98004, USA"
+    },
+    {
+      "name": "Renton Office",
+      "address": "828 N 10th Pl, Renton, WA 98057, United States"
+    },
+    {
+      "name": "Issaquah Office",
+      "address": "371 NE Gilman Blvd #160, Issaquah, WA 98027, United States"
     }
   ]
 }
