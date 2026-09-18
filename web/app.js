@@ -156,7 +156,7 @@ function renderMap(results) {
 function renderTable(results) {
   const body = $("#results-body");
   if (!results.length) {
-    body.innerHTML = '<tr><td colspan="7">No results returned.</td></tr>';
+    body.innerHTML = '<tr><td colspan="8">No results returned.</td></tr>';
     return;
   }
 
@@ -173,10 +173,8 @@ function renderTable(results) {
           <td><span class="score-pill">${(result.score * 100).toFixed(0)}</span></td>
           <td>${formatPercent(result.target_share)}</td>
           <td class="${deltaClass}">${formatDelta(result.home_delta)}</td>
-          <td>
-            <div>${formatMinutes(result.average_commute_minutes)}</div>
-            <span class="source">${hasValue(result.average_daily_cost) ? `${formatMoney(result.average_daily_cost)}/day` : "--"}</span>
-          </td>
+          <td>${formatMinutes(result.average_commute_minutes)}</td>
+          <td><span class="cost-pill">${hasValue(result.average_daily_cost) ? `${formatMoney(result.average_daily_cost)}/day` : "--"}</span></td>
           <td><span class="source">${result.source}</span></td>
         </tr>
       `;
@@ -252,7 +250,7 @@ async function analyze(event) {
   const routeRequests = estimatedRouteRequests(payload);
   setAnalyzingState(true);
   $("#status").textContent = `Loading demographics and ${routeRequests} Google Routes estimates...`;
-  $("#results-body").innerHTML = '<tr><td colspan="7">Analyzing commute candidates...</td></tr>';
+  $("#results-body").innerHTML = '<tr><td colspan="8">Analyzing commute candidates...</td></tr>';
 
   try {
     const response = await fetch("/api/analyze", {
@@ -297,7 +295,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   $("#config-form").addEventListener("submit", (event) => {
     analyze(event).catch((error) => {
       $("#status").textContent = error.message;
-      $("#results-body").innerHTML = `<tr><td colspan="7">${error.message}</td></tr>`;
+      $("#results-body").innerHTML = `<tr><td colspan="8">${error.message}</td></tr>`;
     });
   });
   await loadDefaults();
