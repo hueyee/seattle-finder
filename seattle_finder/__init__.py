@@ -1,0 +1,2 @@
+"""Seattle living finder package."""
+

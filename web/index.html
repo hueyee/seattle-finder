@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Seattle Living Finder</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIINfQPDL8n1b7XqH+u4QkNbQZb9LQmGH9Q="
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="panel">
+        <div class="brand">
+          <h1>Seattle Living Finder</h1>
+          <p>Rank subregions by young-adult concentration and office drive time.</p>
+        </div>
+
+        <form id="config-form" class="control-stack">
+          <label>
+            Home base
+            <input id="home" name="home" type="text" value="Sammamish, WA" />
+          </label>
+
+          <fieldset>
+            <legend>Target age range</legend>
+            <label>
+              Min age
+              <input id="target-age-min" type="number" min="18" max="39" step="1" value="24" />
+            </label>
+            <label>
+              Max age
+              <input id="target-age-max" type="number" min="18" max="39" step="1" value="29" />
+            </label>
+          </fieldset>
+
+          <div class="grid-two">
+            <label>
+              Demographic weight
+              <input id="demographic-weight" type="number" min="0" max="1" step="0.05" value="0.65" />
+            </label>
+            <label>
+              Commute weight
+              <input id="commute-weight" type="number" min="0" max="1" step="0.05" value="0.35" />
+            </label>
+          </div>
+
+          <div class="grid-two">
+            <label>
+              Candidate limit
+              <input id="directions-limit" type="number" min="5" max="80" step="1" value="25" />
+            </label>
+            <label class="toggle-row">
+              <input id="include-neighborhoods" type="checkbox" checked />
+              Seattle neighborhoods
+            </label>
+          </div>
+
+          <label>
+            Office exact addresses
+            <textarea id="office-locations" rows="4">Bellevue City Hall|450 110th Ave NE, Bellevue, WA 98004</textarea>
+          </label>
+
+          <button class="primary-button" type="submit">Analyze</button>
+        </form>
+      </aside>
+
+      <section class="workspace">
+        <div class="toolbar">
+          <div>
+            <h2>Ranked matches</h2>
+            <p id="status">Ready.</p>
+          </div>
+          <div class="metric-row">
+            <div><span id="metric-candidates">0</span><small>candidates</small></div>
+            <div><span id="metric-scored">0</span><small>scored</small></div>
+            <div><span id="metric-reference">--</span><small id="metric-reference-label">Sammamish 24-29</small></div>
+          </div>
+        </div>
+
+        <div id="map" aria-label="Map of ranked candidate places"></div>
+
+        <div class="results-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Place</th>
+                <th>Score</th>
+                <th>Target share</th>
+                <th>Vs. home</th>
+                <th>Avg commute</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody id="results-body">
+              <tr><td colspan="7">Run an analysis to load results.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="/app.js"></script>
+  </body>
+</html>
