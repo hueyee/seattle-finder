@@ -134,6 +134,11 @@ legend {
   background: var(--accent-strong);
 }
 
+.primary-button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
 .workspace {
   min-width: 0;
   display: grid;

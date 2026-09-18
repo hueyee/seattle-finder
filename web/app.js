@@ -1,5 +1,6 @@
 let map;
 let markerLayer;
+let isAnalyzing = false;
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -74,6 +75,18 @@ function payloadFromForm() {
     },
     office_locations: parseOffices()
   };
+}
+
+function estimatedRouteRequests(payload) {
+  return payload.directions_limit * payload.office_locations.length * 3;
+}
+
+function setAnalyzingState(active) {
+  isAnalyzing = active;
+  const button = $("#analyze-button");
+  if (!button) return;
+  button.disabled = active;
+  button.textContent = active ? "Analyzing..." : "Analyze";
 }
 
 function initMap() {
@@ -227,23 +240,32 @@ function renderStatus(payload) {
 
 async function analyze(event) {
   event?.preventDefault();
-  $("#status").textContent = "Loading demographic data and commute times...";
-  $("#results-body").innerHTML = '<tr><td colspan="7">Analyzing...</td></tr>';
+  if (isAnalyzing) return;
 
-  const response = await fetch("/api/analyze", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payloadFromForm())
-  });
-  const payload = await response.json();
-  if (!response.ok || payload.error) {
-    throw new Error(payload.error || "Analysis failed");
+  const payload = payloadFromForm();
+  const routeRequests = estimatedRouteRequests(payload);
+  setAnalyzingState(true);
+  $("#status").textContent = `Loading demographics and ${routeRequests} Google Routes estimates...`;
+  $("#results-body").innerHTML = '<tr><td colspan="7">Analyzing commute candidates...</td></tr>';
+
+  try {
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json();
+    if (!response.ok || result.error) {
+      throw new Error(result.error || "Analysis failed");
+    }
+
+    renderMetrics(result);
+    renderTable(result.results);
+    renderMap(result.results);
+    renderStatus(result);
+  } finally {
+    setAnalyzingState(false);
   }
-
-  renderMetrics(payload);
-  renderTable(payload.results);
-  renderMap(payload.results);
-  renderStatus(payload);
 }
 
 async function loadDefaults() {
@@ -273,7 +295,6 @@ window.addEventListener("DOMContentLoaded", async () => {
     });
   });
   await loadDefaults();
-  analyze().catch((error) => {
-    $("#status").textContent = error.message;
-  });
+  $("#status").textContent = "Ready. Adjust settings and click Analyze.";
+  renderMap([]);
 });

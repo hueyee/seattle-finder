@@ -55,7 +55,7 @@
   "excluded_seattle_neighborhood_subtypes": ["Outside Centers", "Manufacturing Industrial Center"],
   "min_population": 2500,
   "min_neighborhood_population": 800,
-  "directions_limit": 25,
+  "directions_limit": 5,
   "commute_schedule": {
     "timezone": "America/Los_Angeles",
     "morning_arrival_time": "09:00",

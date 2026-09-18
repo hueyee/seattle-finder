@@ -116,15 +116,12 @@ class GoogleMapsClient:
     def _route_for_arrival(self, origin: str, destination: str, options: "CommuteOptions") -> "RouteLeg":
         departure = options.morning_arrival - timedelta(minutes=30)
         leg = self._route(origin, destination, departure, options)
-        for _ in range(2):
-            if leg.duration_minutes is None:
-                return leg
-            next_departure = options.morning_arrival - timedelta(minutes=leg.duration_minutes)
-            if abs((next_departure - departure).total_seconds()) < 60:
-                return leg
-            departure = next_departure
-            leg = self._route(origin, destination, departure, options)
-        return leg
+        if leg.duration_minutes is None:
+            return leg
+        next_departure = options.morning_arrival - timedelta(minutes=leg.duration_minutes)
+        if abs((next_departure - departure).total_seconds()) < 60:
+            return leg
+        return self._route(origin, destination, next_departure, options)
 
     def _route(
         self,

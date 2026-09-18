@@ -121,6 +121,8 @@ def analyze(candidates: list[Candidate], maps: GoogleMapsClient, config: dict[st
             "scored_count": len(results),
             "maps_enabled": maps.enabled,
             "directions_limit": limit,
+            "office_count": len(offices),
+            "estimated_route_requests": limit * len(offices) * 3 if maps.enabled else 0,
             "sources": [
                 "2024 ACS 5-year B01001 via Census API",
                 "Seattle neighborhood ACS layer via Seattle City GIS ArcGIS",
