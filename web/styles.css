@@ -663,6 +663,7 @@ legend {
   display: block;
   margin-top: 4px;
   font-size: 16px;
+  overflow-wrap: anywhere;
 }
 
 .commute-list {

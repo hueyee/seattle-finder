@@ -17,7 +17,7 @@
       <aside class="panel">
         <div class="brand">
           <h1>Seattle Living Finder</h1>
-          <p>Rank subregions by young-adult concentration and office drive time.</p>
+          <p>Rank subregions by young-adult concentration, office drive time, and apartment cost.</p>
         </div>
 
         <form id="config-form" class="control-stack">
@@ -52,6 +52,11 @@
               <span>Commute</span>
               <output id="commute-weight-label" for="commute-weight">35%</output>
               <input id="commute-weight" type="range" min="0" max="100" step="5" value="35" />
+            </label>
+            <label class="range-field">
+              <span>Affordability</span>
+              <output id="affordability-weight-label" for="affordability-weight">30%</output>
+              <input id="affordability-weight" type="range" min="0" max="100" step="5" value="30" />
             </label>
           </section>
 
@@ -88,6 +93,13 @@
                 <label class="field">
                   Fuel $/gal
                   <input id="fuel-price-per-gallon" type="number" min="0" max="20" step="0.01" value="5.00" />
+                </label>
+              </div>
+
+              <div class="grid-two">
+                <label class="field">
+                  Commute days/mo
+                  <input id="commute-days-per-month" type="number" min="0" max="31" step="1" value="20" />
                 </label>
               </div>
 

@@ -11,6 +11,7 @@ from seattle_finder.config import ROOT, default_config, google_server_key
 from seattle_finder.demographics import load_candidates
 from seattle_finder.google_maps import GoogleMapsClient
 from seattle_finder.http_client import HttpClient
+from seattle_finder.rents import load_rent_estimates
 from seattle_finder.scoring import analyze
 
 
@@ -64,7 +65,8 @@ class AppHandler(BaseHTTPRequestHandler):
             http = HttpClient(cache)
             maps = GoogleMapsClient(http, google_server_key())
             candidates = load_candidates(http, config)
-            result = analyze(candidates, maps, config)
+            rent_estimates = load_rent_estimates(http, candidates, config)
+            result = analyze(candidates, maps, config, rent_estimates)
             self._send_json(result)
         except Exception as exc:
             self._send_json({"error": str(exc)}, status=500)

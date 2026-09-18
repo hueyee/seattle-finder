@@ -51,19 +51,16 @@ function targetAgeRange() {
   };
 }
 
-function syncWeights(changedId) {
+function syncWeights() {
   const demographic = $("#demographic-weight");
   const commute = $("#commute-weight");
-
-  if (changedId === "commute-weight") {
-    demographic.value = 100 - Number(commute.value);
-  } else {
-    commute.value = 100 - Number(demographic.value);
-  }
+  const affordability = $("#affordability-weight");
+  const total = Number(demographic.value) + Number(commute.value) + Number(affordability.value);
 
   $("#demographic-weight-label").textContent = `${demographic.value}%`;
   $("#commute-weight-label").textContent = `${commute.value}%`;
-  $("#weight-total").textContent = `${Number(demographic.value) + Number(commute.value)}%`;
+  $("#affordability-weight-label").textContent = `${affordability.value}%`;
+  $("#weight-total").textContent = `${total}%`;
 }
 
 function addOfficeRow(office = {}) {
@@ -117,7 +114,14 @@ function payloadFromForm() {
     directions_limit: Number($("#directions-limit").value),
     weights: {
       demographics: Number($("#demographic-weight").value) / 100,
-      commute: Number($("#commute-weight").value) / 100
+      commute: Number($("#commute-weight").value) / 100,
+      affordability: Number($("#affordability-weight").value) / 100
+    },
+    rent: {
+      enabled: true,
+      bedrooms: 1,
+      commute_days_per_month: Number($("#commute-days-per-month").value),
+      apartment_list_csv: "data/apartment_list_rent_estimates.csv"
     },
     commute_schedule: {
       timezone: "America/Los_Angeles",
@@ -179,7 +183,8 @@ function addMarker(result, index) {
     <strong>${index + 1}. ${escapeHtml(result.name)}</strong><br>
     Score: ${(result.score * 100).toFixed(0)}<br>
     Young-adult share: ${formatPercent(result.target_share)}<br>
-    Avg commute: ${formatMinutes(result.average_commute_minutes)}
+    Avg commute: ${formatMinutes(result.average_commute_minutes)}<br>
+    Total monthly cost: ${formatMoney(result.total_monthly_cost)}
     ${renderCommuteList(result, "popup")}
   `);
   marker.on("click", () => selectResult(index, { panToMarker: false }));
@@ -243,8 +248,12 @@ function resultCard(result, index) {
           <strong>${formatMinutes(result.average_commute_minutes)}</strong>
         </div>
         <div class="mini-metric">
-          <span>Daily cost</span>
-          <strong>${hasValue(result.average_daily_cost) ? formatMoney(result.average_daily_cost) : "--"}</strong>
+          <span>1BR rent</span>
+          <strong>${formatMoney(result.monthly_rent_1br)}</strong>
+        </div>
+        <div class="mini-metric">
+          <span>Total/mo</span>
+          <strong>${formatMoney(result.total_monthly_cost)}</strong>
         </div>
       </div>
     </button>
@@ -322,8 +331,20 @@ function renderDetail(result, index) {
         <strong class="${deltaClass}">${formatDelta(result.home_delta)}</strong>
       </div>
       <div class="detail-stat">
-        <span>Avg daily cost</span>
-        <strong>${hasValue(result.average_daily_cost) ? formatMoney(result.average_daily_cost) : "--"}</strong>
+        <span>1BR rent</span>
+        <strong>${formatMoney(result.monthly_rent_1br)}</strong>
+      </div>
+      <div class="detail-stat">
+        <span>Total monthly</span>
+        <strong>${formatMoney(result.total_monthly_cost)}</strong>
+      </div>
+      <div class="detail-stat">
+        <span>Monthly commute</span>
+        <strong>${formatMoney(result.monthly_commute_cost)}</strong>
+      </div>
+      <div class="detail-stat">
+        <span>Rent source</span>
+        <strong>${escapeHtml(result.rent_source ?? "--")}</strong>
       </div>
     </div>
     <h2>Office commutes</h2>
@@ -357,21 +378,22 @@ function renderMetrics(payload) {
 }
 
 function renderStatus(payload) {
-  const sourceWarning = payload.status.warnings?.length ? " Census place data needs CENSUS_API_KEY." : "";
+  const sourceWarning = payload.status.warnings?.length ? ` ${payload.status.warnings.join(" ")}` : "";
   const commuteStatuses = [
     ...new Set(payload.results.flatMap((result) => result.commutes.map((commute) => commute.status)))
   ].filter((status) => status && status !== "OK" && status !== "missing_google_maps_api_key");
   const hasCommuteTimes = payload.results.some((result) => result.average_commute_minutes !== null);
+  const hasRent = payload.results.some((result) => result.monthly_rent_1br !== null);
 
   if (commuteStatuses.length > 0) {
-    $("#status").textContent = `Ranked by demographics. Google Routes returned ${commuteStatuses.join(", ")}.${sourceWarning}`;
+    $("#status").textContent = `Ranked with available demographics and rent data. Google Routes returned ${commuteStatuses.join(", ")}.${sourceWarning}`;
     return;
   }
 
   $("#status").textContent =
     payload.status.maps_enabled && hasCommuteTimes
-      ? `Ranked with live Google Routes commute data.${sourceWarning}`
-      : `Ranked by demographics. Set up Google Routes for commute times and mapped candidate locations.${sourceWarning}`;
+      ? `Ranked with commute and ${hasRent ? "rent" : "available"} data.${sourceWarning}`
+      : `Ranked by demographics${hasRent ? " and rent" : ""}. Set up Google Routes for commute times and mapped candidate locations.${sourceWarning}`;
 }
 
 function renderError(message) {
@@ -388,7 +410,7 @@ async function analyze(event) {
   const payload = payloadFromForm();
   const routeRequests = estimatedRouteRequests(payload);
   setAnalyzingState(true);
-  $("#status").textContent = `Loading demographics and ${routeRequests} Google Routes estimates...`;
+  $("#status").textContent = `Loading demographics, rents, and ${routeRequests} Google Routes estimates...`;
   $("#results-body").innerHTML = '<p class="empty-state">Analyzing commute candidates...</p>';
   $("#drawer-count").textContent = "Working";
   $("#detail-panel").hidden = true;
@@ -403,7 +425,7 @@ async function analyze(event) {
     if (!response.ok || result.error) {
       throw new Error(result.error || "Analysis failed");
     }
-    if (!result.status?.api_version || result.status.api_version < 2) {
+    if (!result.status?.api_version || result.status.api_version < 3) {
       throw new Error("The Python server is still running older backend code. Stop it and restart python3 server.py.");
     }
 
@@ -430,8 +452,11 @@ async function loadDefaults() {
   $("#evening-departure-time").value = config.commute_schedule?.evening_departure_time ?? "17:00";
   $("#miles-per-gallon").value = config.vehicle?.miles_per_gallon ?? 15;
   $("#fuel-price-per-gallon").value = config.vehicle?.fuel_price_per_gallon ?? 5.0;
-  $("#demographic-weight").value = Math.round((config.weights.demographics ?? 0.65) * 100);
-  syncWeights("demographic-weight");
+  $("#commute-days-per-month").value = config.rent?.commute_days_per_month ?? 20;
+  $("#demographic-weight").value = Math.round((config.weights.demographics ?? 0.45) * 100);
+  $("#commute-weight").value = Math.round((config.weights.commute ?? 0.25) * 100);
+  $("#affordability-weight").value = Math.round((config.weights.affordability ?? 0.30) * 100);
+  syncWeights();
   $("#include-neighborhoods").checked = config.include_seattle_neighborhoods;
   $("#office-rows").innerHTML = "";
   config.office_locations.forEach(addOfficeRow);
@@ -458,8 +483,9 @@ window.addEventListener("DOMContentLoaded", async () => {
     selectedIndex = null;
     document.querySelectorAll(".result-card").forEach((card) => card.classList.remove("is-selected"));
   });
-  $("#demographic-weight").addEventListener("input", () => syncWeights("demographic-weight"));
-  $("#commute-weight").addEventListener("input", () => syncWeights("commute-weight"));
+  $("#demographic-weight").addEventListener("input", syncWeights);
+  $("#commute-weight").addEventListener("input", syncWeights);
+  $("#affordability-weight").addEventListener("input", syncWeights);
 
   await loadDefaults();
   $("#status").textContent = "Ready. Adjust settings and click Analyze.";

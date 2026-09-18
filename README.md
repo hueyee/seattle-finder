@@ -9,7 +9,8 @@ A local v1 web app for comparing Greater Seattle places by young-adult demograph
 - Uses Google Routes API for drive commute time and distance when `GOOGLE_MAPS_API_KEY` is set.
 - Estimates commute timing for arrival by 9:00 AM and departure at 5:00 PM by default.
 - Estimates daily driving cost from fuel plus Routes API toll estimates, including SR-520 when the route uses it.
-- Scores places by target-age share and commute time, then renders rankings and a map.
+- Estimates 1-bedroom rent from an imported Apartment List CSV when available, then falls back to ACS and Seattle rent typology data.
+- Scores places by target-age share, commute time, and total monthly cost, then renders rankings and a map.
 
 ## Run
 
@@ -35,8 +36,9 @@ Useful knobs:
 
 - `target_age_min` / `target_age_max`: defaults to `24` through `29`.
 - `office_locations`: add one or more office names and exact street addresses.
-- `weights`: tune demographic versus commute importance.
 - `directions_limit`: controls how many high-demographic candidates get Google Routes calls.
+- `weights`: tune demographic, commute, and affordability importance.
+- `rent`: controls rent scoring, including the local Apartment List CSV path and commute days per month.
 - `commute_schedule`: defaults to arrival by `09:00` and departure at `17:00`.
 - `vehicle`: defaults to `15` MPG, `$5.00` per gallon, gasoline, and `US_WA_GOOD_TO_GO` toll pass pricing.
 - `candidate_places`: the Census place allowlist for the Greater Seattle search area.
@@ -45,4 +47,7 @@ Useful knobs:
 
 - Seattle City GIS ArcGIS layer: `demographics_basic_age_sex_Neighborhoods`
 - Census ACS 2024 5-year API: `B01001`
+- Local Apartment List rent estimates CSV, when placed at `data/apartment_list_rent_estimates.csv`
+- Census ACS 2024 5-year API: `B25031`
+- Seattle City GIS ArcGIS layer: `RentTypology`
 - Google Routes API

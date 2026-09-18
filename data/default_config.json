@@ -67,9 +67,16 @@
     "toll_passes": ["US_WA_GOOD_TO_GO"],
     "emission_type": "GASOLINE"
   },
+  "rent": {
+    "enabled": true,
+    "bedrooms": 1,
+    "commute_days_per_month": 20,
+    "apartment_list_csv": "data/apartment_list_rent_estimates.csv"
+  },
   "weights": {
-    "demographics": 0.65,
-    "commute": 0.35
+    "demographics": 0.45,
+    "commute": 0.25,
+    "affordability": 0.30
   },
   "office_locations": [
     {
