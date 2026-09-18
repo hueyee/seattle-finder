@@ -262,6 +262,9 @@ async function analyze(event) {
     if (!response.ok || result.error) {
       throw new Error(result.error || "Analysis failed");
     }
+    if (!result.status?.api_version || result.status.api_version < 2) {
+      throw new Error("The Python server is still running older backend code. Stop it and restart python3 server.py.");
+    }
 
     renderMetrics(result);
     renderTable(result.results);

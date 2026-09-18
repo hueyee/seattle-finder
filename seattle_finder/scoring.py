@@ -117,6 +117,7 @@ def analyze(candidates: list[Candidate], maps: GoogleMapsClient, config: dict[st
         "results": sorted(results, key=lambda item: item["score"], reverse=True),
         "reference": asdict(home) if home else None,
         "status": {
+            "api_version": 2,
             "candidate_count": len(candidates),
             "scored_count": len(results),
             "maps_enabled": maps.enabled,
